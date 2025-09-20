@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useMiniKit } from '@coinbase/minikit';
 import { AppShell } from '@/components/layout/AppShell';
 import { HomeView } from '@/components/views/HomeView';
 import { TutorialsView } from '@/components/views/TutorialsView';
@@ -12,7 +11,6 @@ import { AuthView } from '@/components/views/AuthView';
 import { AppState } from '@/lib/types';
 
 export default function Home() {
-  const { user } = useMiniKit();
   const [appState, setAppState] = useState<AppState>({
     currentUser: null,
     isAuthenticated: false,
@@ -21,32 +19,25 @@ export default function Home() {
   });
 
   useEffect(() => {
-    // Simulate authentication check
+    // Simulate authentication check for demo
     const timer = setTimeout(() => {
-      if (user) {
-        setAppState(prev => ({
-          ...prev,
-          currentUser: {
-            userId: user.fid?.toString() || 'demo-user',
-            username: user.displayName || 'Anonymous',
-            profilePicUrl: user.pfpUrl || '',
-            walletAddress: user.custody?.address,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        }));
-      } else {
-        setAppState(prev => ({
-          ...prev,
-          isLoading: false,
-        }));
-      }
+      setAppState(prev => ({
+        ...prev,
+        currentUser: {
+          userId: 'demo-user',
+          username: 'Demo User',
+          profilePicUrl: '',
+          walletAddress: '0x123...',
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      }));
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [user]);
+  }, []);
 
-  const handleViewChange = (view: string) => {
+  const handleViewChange = (view: AppState['currentView']) => {
     setAppState(prev => ({ ...prev, currentView: view }));
   };
 

@@ -8,15 +8,21 @@ import { Avatar } from '@/components/ui/Avatar';
 
 interface AppShellProps {
   children: React.ReactNode;
-  currentView: string;
-  onViewChange: (view: string) => void;
+  currentView: 'home' | 'tutorials' | 'practice' | 'challenges' | 'profile';
+  onViewChange: (view: 'home' | 'tutorials' | 'practice' | 'challenges' | 'profile') => void;
   user?: {
-    name: string;
-    avatar?: string;
-  };
+    userId: string;
+    username: string;
+    profilePicUrl: string;
+    walletAddress?: string;
+  } | null;
 }
 
-const navItems = [
+const navItems: Array<{
+  id: 'home' | 'tutorials' | 'practice' | 'challenges' | 'profile';
+  label: string;
+  icon: any;
+}> = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'tutorials', label: 'Tutorials', icon: Play },
   { id: 'practice', label: 'Practice', icon: Users },
@@ -48,8 +54,8 @@ export function AppShell({
             <div className="flex items-center gap-3">
               {user && (
                 <Avatar
-                  src={user.avatar}
-                  alt={user.name}
+                  src={user.profilePicUrl}
+                  alt={user.username}
                   size="sm"
                 />
               )}
