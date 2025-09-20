@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  userId        String   @id
+  username      String
+  profilePicUrl String?
+  walletAddress String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  practiceSessions PracticeSession[]
+  submissions      Submission[]
+
+  @@map("users")
+}
+
+model DanceTutorial {
+  tutorialId   String @id @default(cuid())
+  title        String
+  description  String
+  videoUrl     String
+  danceStyle   String
+  difficulty   String // 'beginner' | 'intermediate' | 'advanced'
+  duration     Int    // in seconds
+  thumbnailUrl String
+  instructor   String
+  tags         String // JSON array of tags
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  practiceSessions PracticeSession[]
+
+  @@map("dance_tutorials")
+}
+
+model PracticeSession {
+  sessionId     String   @id @default(cuid())
+  userId1       String
+  userId2       String?
+  tutorialId    String?
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  isLive        Boolean  @default(false)
+  sessionType   String   // 'solo' | 'partner' | 'group'
+  recordingUrl  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user1         User         @relation(fields: [userId1], references: [userId])
+  user2         User?        @relation(fields: [userId2], references: [userId])
+  tutorial      DanceTutorial? @relation(fields: [tutorialId], references: [tutorialId])
+  aiFeedbacks   AIFeedback[]
+
+  @@map("practice_sessions")
+}
+
+model Challenge {
+  challengeId     String   @id @default(cuid())
+  title           String
+  description     String
+  startDate       DateTime
+  endDate         DateTime
+  creatorId       String
+  prize           String?
+  difficulty      String   // 'easy' | 'medium' | 'hard'
+  tags            String   // JSON array of tags
+  participantCount Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  creator         User         @relation(fields: [creatorId], references: [userId])
+  submissions     Submission[]
+
+  @@map("challenges")
+}
+
+model Submission {
+  submissionId String   @id @default(cuid())
+  challengeId  String
+  userId       String
+  videoUrl     String
+  timestamp    DateTime @default(now())
+  likes        Int      @default(0)
+  views        Int      @default(0)
+  title        String?
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  challenge     Challenge @relation(fields: [challengeId], references: [challengeId])
+  user          User      @relation(fields: [userId], references: [userId])
+
+  @@map("submissions")
+}
+
+model AIFeedback {
+  feedbackId   String   @id @default(cuid())
+  sessionId    String
+  userId       String
+  overallScore Float    // 0-100
+  rhythmScore  Float
+  formScore    Float
+  energyScore  Float
+  suggestions  String   // JSON array of suggestions
+  timestamp    DateTime @default(now())
+  isPremium    Boolean  @default(false)
+
+  // Relations
+  session       PracticeSession @relation(fields: [sessionId], references: [sessionId])
+
+  @@map("ai_feedbacks")
+}
+

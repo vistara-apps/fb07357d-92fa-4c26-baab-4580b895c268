@@ -1,48 +1,49 @@
-'use client';
-
-import { Avatar } from './Avatar';
 import { cn } from '@/lib/utils';
+import { Avatar } from './Avatar';
 
 interface AvatarGroupProps {
-  users: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
+  avatars: Array<{
+    src?: string;
+    alt: string;
+    fallback?: string;
   }>;
   max?: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
 export function AvatarGroup({
-  users,
-  max = 3,
+  avatars,
+  max = 5,
   size = 'md',
-  className = '',
+  className
 }: AvatarGroupProps) {
-  const displayUsers = users.slice(0, max);
-  const remainingCount = users.length - max;
+  const visibleAvatars = avatars.slice(0, max);
+  const remainingCount = avatars.length - max;
 
   return (
     <div className={cn('flex -space-x-2', className)}>
-      {displayUsers.map((user, index) => (
+      {visibleAvatars.map((avatar, index) => (
         <Avatar
-          key={user.id}
-          src={user.avatar}
-          alt={user.name}
+          key={index}
+          src={avatar.src}
+          alt={avatar.alt}
+          fallback={avatar.fallback}
           size={size}
-          className="border-2 border-background"
-          style={{ zIndex: displayUsers.length - index }}
+          className="border-2 border-surface"
         />
       ))}
-      
+
       {remainingCount > 0 && (
         <div
           className={cn(
-            'flex items-center justify-center rounded-full bg-surface border-2 border-background text-text-secondary font-medium',
-            size === 'sm' && 'w-8 h-8 text-xs',
-            size === 'md' && 'w-12 h-12 text-sm',
-            size === 'lg' && 'w-16 h-16 text-base'
+            'flex items-center justify-center bg-surface border-2 border-surface rounded-full text-text-secondary font-medium',
+            {
+              'w-8 h-8 text-xs': size === 'sm',
+              'w-10 h-10 text-sm': size === 'md',
+              'w-12 h-12 text-base': size === 'lg',
+              'w-16 h-16 text-lg': size === 'xl',
+            }
           )}
         >
           +{remainingCount}
@@ -51,3 +52,4 @@ export function AvatarGroup({
     </div>
   );
 }
+

@@ -1,190 +1,264 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, Play } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { TextField } from '@/components/ui/TextField';
+import { Select } from '@/components/ui/Dropdown';
 import { TutorialCard } from '@/components/features/TutorialCard';
-import { MOCK_TUTORIALS, DANCE_STYLES } from '@/lib/constants';
 import { DanceTutorial } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { tutorialApi } from '@/lib/services/api';
+import { DANCE_STYLES } from '@/lib/constants';
 
-export function TutorialsView() {
+interface TutorialsViewProps {
+  onPlayTutorial?: (tutorial: DanceTutorial) => void;
+  onPracticeTutorial?: (tutorial: DanceTutorial) => void;
+}
+
+export function TutorialsView({ onPlayTutorial, onPracticeTutorial }: TutorialsViewProps) {
+  const [tutorials, setTutorials] = useState<DanceTutorial[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStyle, setSelectedStyle] = useState<string>('all');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [selectedStyle, setSelectedStyle] = useState('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredTutorials = MOCK_TUTORIALS.filter((tutorial) => {
-    const matchesSearch = tutorial.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         tutorial.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         tutorial.instructor.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStyle = selectedStyle === 'all' || tutorial.danceStyle === selectedStyle.toLowerCase();
-    const matchesDifficulty = selectedDifficulty === 'all' || tutorial.difficulty === selectedDifficulty;
-    
+  useEffect(() => {
+    fetchTutorials();
+  }, []);
+
+  const fetchTutorials = async () => {
+    try {
+      const tutorialsData = await tutorialApi.getAll();
+      setTutorials(tutorialsData);
+    } catch (error) {
+      console.error('Error fetching tutorials:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTutorials = tutorials.filter(tutorial => {
+    const matchesSearch = !searchQuery ||
+      tutorial.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tutorial.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tutorial.instructor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tutorial.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesStyle = selectedStyle === 'all' ||
+      tutorial.danceStyle.toLowerCase() === selectedStyle.toLowerCase();
+
+    const matchesDifficulty = selectedDifficulty === 'all' ||
+      tutorial.difficulty === selectedDifficulty;
+
     return matchesSearch && matchesStyle && matchesDifficulty;
   });
 
   const handlePlayTutorial = (tutorial: DanceTutorial) => {
-    console.log('Playing tutorial:', tutorial.title);
+    onPlayTutorial?.(tutorial);
   };
 
   const handlePracticeTutorial = (tutorial: DanceTutorial) => {
-    console.log('Starting practice for:', tutorial.title);
+    onPracticeTutorial?.(tutorial);
   };
+
+  if (loading) {
+    return (
+      <div className="px-4 py-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading tutorials...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Dance Tutorials</h1>
-        <p className="text-text-secondary">Master new moves with expert instruction</p>
+        <h1 className="text-3xl font-bold text-text-primary mb-2">
+          Dance Tutorials
+        </h1>
+        <p className="text-text-secondary max-w-2xl mx-auto">
+          Learn new moves with our curated collection of dance tutorials.
+          From beginner basics to advanced techniques, find the perfect tutorial for your skill level.
+        </p>
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-secondary" />
-          <input
-            type="text"
-            placeholder="Search tutorials, instructors, or styles..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-surface border border-surface/20 rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </div>
-
-        {/* Filter Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-text-secondary">
-            {filteredTutorials.length} tutorials found
+      <Card className="p-4">
+        <div className="flex flex-col space-y-4">
+          {/* Search Bar */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <TextField
+                placeholder="Search tutorials, instructors, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                startIcon={<Search className="w-4 h-4" />}
+                fullWidth
+              />
+            </div>
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="secondary"
+              className="shrink-0"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+            </Button>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Dance Styles' },
+                  ...DANCE_STYLES.map(style => ({
+                    value: style.name.toLowerCase(),
+                    label: style.name
+                  }))
+                ]}
+                value={selectedStyle}
+                onChange={setSelectedStyle}
+                placeholder="Select dance style"
+              />
+
+              <Select
+                options={[
+                  { value: 'all', label: 'All Difficulties' },
+                  { value: 'beginner', label: 'Beginner' },
+                  { value: 'intermediate', label: 'Intermediate' },
+                  { value: 'advanced', label: 'Advanced' },
+                ]}
+                value={selectedDifficulty}
+                onChange={setSelectedDifficulty}
+                placeholder="Select difficulty"
+              />
+            </div>
+          )}
         </div>
+      </Card>
 
-        {/* Filters */}
-        {showFilters && (
-          <Card className="p-4 space-y-4">
-            {/* Dance Style Filter */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Dance Style
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedStyle('all')}
-                  className={cn(
-                    'px-3 py-1 text-sm rounded-full transition-colors duration-200',
-                    selectedStyle === 'all'
-                      ? 'bg-primary text-white'
-                      : 'bg-surface text-text-secondary hover:text-text-primary'
-                  )}
-                >
-                  All Styles
-                </button>
-                {DANCE_STYLES.map((style) => (
-                  <button
-                    key={style.name}
-                    onClick={() => setSelectedStyle(style.name)}
-                    className={cn(
-                      'px-3 py-1 text-sm rounded-full transition-colors duration-200 flex items-center gap-1',
-                      selectedStyle === style.name
-                        ? 'bg-primary text-white'
-                        : 'bg-surface text-text-secondary hover:text-text-primary'
-                    )}
-                  >
-                    <span>{style.emoji}</span>
-                    {style.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Difficulty Filter */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Difficulty
-              </label>
-              <div className="flex gap-2">
-                {['all', 'beginner', 'intermediate', 'advanced'].map((difficulty) => (
-                  <button
-                    key={difficulty}
-                    onClick={() => setSelectedDifficulty(difficulty)}
-                    className={cn(
-                      'px-3 py-1 text-sm rounded-full transition-colors duration-200 capitalize',
-                      selectedDifficulty === difficulty
-                        ? 'bg-primary text-white'
-                        : 'bg-surface text-text-secondary hover:text-text-primary'
-                    )}
-                  >
-                    {difficulty}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Quick Access Styles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {DANCE_STYLES.slice(0, 4).map((style) => (
-          <Card
-            key={style.name}
-            className="p-3 text-center cursor-pointer hover:scale-105 transition-transform duration-200"
-            onClick={() => setSelectedStyle(style.name)}
-            hover
-          >
-            <div className={`w-10 h-10 bg-gradient-to-br ${style.color} rounded-full flex items-center justify-center mx-auto mb-2`}>
-              <span className="text-xl">{style.emoji}</span>
-            </div>
-            <div className="text-sm font-medium text-text-primary">{style.name}</div>
-          </Card>
-        ))}
+      {/* Quick Style Access */}
+      <div>
+        <h2 className="text-xl font-semibold text-text-primary mb-4">
+          Popular Dance Styles
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {DANCE_STYLES.slice(0, 6).map((style) => (
+            <Card
+              key={style.name}
+              className="p-4 text-center cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => setSelectedStyle(style.name.toLowerCase())}
+            >
+              <div
+                className="w-12 h-12 rounded-full mx-auto mb-2"
+                style={{ background: style.color }}
+              />
+              <h3 className="font-medium text-text-primary text-sm">
+                {style.name}
+              </h3>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Tutorials Grid */}
-      {filteredTutorials.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTutorials.map((tutorial) => (
-            <TutorialCard
-              key={tutorial.tutorialId}
-              tutorial={tutorial}
-              onPlay={handlePlayTutorial}
-              onPractice={handlePracticeTutorial}
-            />
-          ))}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-text-primary">
+            {filteredTutorials.length === tutorials.length
+              ? `All Tutorials (${tutorials.length})`
+              : `Filtered Results (${filteredTutorials.length})`
+            }
+          </h2>
+
+          {(searchQuery || selectedStyle !== 'all' || selectedDifficulty !== 'all') && (
+            <Button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedStyle('all');
+                setSelectedDifficulty('all');
+              }}
+              variant="secondary"
+              size="sm"
+            >
+              Clear Filters
+            </Button>
+          )}
         </div>
-      ) : (
-        <Card className="p-8 text-center">
-          <div className="text-4xl mb-4">🔍</div>
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
-            No tutorials found
-          </h3>
-          <p className="text-text-secondary mb-4">
-            Try adjusting your search or filters to find what you're looking for.
-          </p>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedStyle('all');
-              setSelectedDifficulty('all');
-            }}
-          >
-            Clear Filters
-          </Button>
+
+        {filteredTutorials.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Search className="w-12 h-12 text-text-secondary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
+              No tutorials found
+            </h3>
+            <p className="text-text-secondary mb-4">
+              {searchQuery || selectedStyle !== 'all' || selectedDifficulty !== 'all'
+                ? 'Try adjusting your search or filters.'
+                : 'No tutorials are available at the moment.'
+              }
+            </p>
+            {(searchQuery || selectedStyle !== 'all' || selectedDifficulty !== 'all') && (
+              <Button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedStyle('all');
+                  setSelectedDifficulty('all');
+                }}
+                variant="primary"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredTutorials.map((tutorial) => (
+              <TutorialCard
+                key={tutorial.tutorialId}
+                tutorial={tutorial}
+                onPlay={() => handlePlayTutorial(tutorial)}
+                onPractice={() => handlePracticeTutorial?.(tutorial)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Featured Tutorial */}
+      {tutorials.length > 0 && !searchQuery && selectedStyle === 'all' && selectedDifficulty === 'all' && (
+        <Card className="p-6 bg-gradient-to-r from-primary/10 to-accent/10">
+          <div className="flex items-center gap-6">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Play className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">
+                Featured Tutorial
+              </h3>
+              <p className="text-text-secondary mb-4">
+                Check out our most popular tutorial: "{tutorials[0]?.title}"
+              </p>
+              <Button
+                onClick={() => handlePlayTutorial(tutorials[0])}
+                variant="primary"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Start Watching
+              </Button>
+            </div>
+          </div>
         </Card>
       )}
     </div>
   );
 }
+

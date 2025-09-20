@@ -1,241 +1,394 @@
 'use client';
 
-import { useState } from 'react';
-import { Trophy, Calendar, Users, Plus, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trophy, Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { TextField } from '@/components/ui/TextField';
+import { Select } from '@/components/ui/Dropdown';
 import { ChallengeCard } from '@/components/features/ChallengeCard';
-import { MOCK_CHALLENGES } from '@/lib/constants';
-import { Challenge } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { Modal } from '@/components/ui/Modal';
+import { Challenge, Submission } from '@/lib/types';
+import { challengeApi, submissionApi } from '@/lib/services/api';
 
-export function ChallengesView() {
-  const [activeTab, setActiveTab] = useState<'active' | 'upcoming' | 'ended'>('active');
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+interface ChallengesViewProps {
+  currentUserId?: string;
+}
 
-  const now = new Date();
-  
-  const activeChallenges = MOCK_CHALLENGES.filter(c => 
-    now >= c.startDate && now <= c.endDate
-  );
-  
-  const upcomingChallenges = MOCK_CHALLENGES.filter(c => 
-    now < c.startDate
-  );
-  
-  const endedChallenges = MOCK_CHALLENGES.filter(c => 
-    now > c.endDate
-  );
+export function ChallengesView({ currentUserId }: ChallengesViewProps) {
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
 
-  const getCurrentChallenges = () => {
-    let challenges = [];
-    switch (activeTab) {
-      case 'active':
-        challenges = activeChallenges;
-        break;
-      case 'upcoming':
-        challenges = upcomingChallenges;
-        break;
-      case 'ended':
-        challenges = endedChallenges;
-        break;
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [challengesData, submissionsData] = await Promise.all([
+        challengeApi.getAll(),
+        currentUserId ? submissionApi.getAll({ userId: currentUserId }) : Promise.resolve([])
+      ]);
+
+      setChallenges(challengesData);
+      setSubmissions(submissionsData);
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    if (selectedDifficulty !== 'all') {
-      challenges = challenges.filter(c => c.difficulty === selectedDifficulty);
-    }
-    
-    return challenges;
   };
 
-  const handleJoinChallenge = (challenge: Challenge) => {
+  const handleCreateChallenge = async (challengeData: {
+    title: string;
+    description: string;
+    difficulty: string;
+    startDate: string;
+    endDate: string;
+    prize?: string;
+  }) => {
+    if (!currentUserId) return;
+
+    try {
+      const newChallenge = await challengeApi.create({
+        ...challengeData,
+        creatorId: currentUserId,
+        participantCount: 0,
+        tags: [],
+      });
+
+      setChallenges(prev => [newChallenge, ...prev]);
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+    }
+  };
+
+  const handleJoinChallenge = async (challenge: Challenge) => {
+    // In a real app, this would update the challenge's participant count
     console.log('Joining challenge:', challenge.title);
   };
 
-  const handleViewChallenge = (challenge: Challenge) => {
-    console.log('Viewing challenge:', challenge.title);
+  const handleSubmitToChallenge = async (challenge: Challenge) => {
+    // In a real app, this would open a submission modal
+    console.log('Submitting to challenge:', challenge.title);
   };
 
-  const handleCreateChallenge = () => {
-    console.log('Creating new challenge');
+  const getChallengeStatus = (challenge: Challenge) => {
+    const now = new Date();
+    const start = new Date(challenge.startDate);
+    const end = new Date(challenge.endDate);
+
+    if (now < start) return 'upcoming';
+    if (now > end) return 'ended';
+    return 'active';
   };
+
+  const hasUserSubmitted = (challengeId: string) => {
+    return submissions.some(sub => sub.challengeId === challengeId);
+  };
+
+  const filteredChallenges = challenges.filter(challenge => {
+    const matchesSearch = !searchQuery ||
+      challenge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      challenge.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesDifficulty = selectedDifficulty === 'all' ||
+      challenge.difficulty === selectedDifficulty;
+
+    const status = getChallengeStatus(challenge);
+    const matchesStatus = selectedStatus === 'all' || status === selectedStatus;
+
+    return matchesSearch && matchesDifficulty && matchesStatus;
+  });
+
+  const activeChallenges = filteredChallenges.filter(c => getChallengeStatus(c) === 'active');
+  const upcomingChallenges = filteredChallenges.filter(c => getChallengeStatus(c) === 'upcoming');
+  const endedChallenges = filteredChallenges.filter(c => getChallengeStatus(c) === 'ended');
+
+  if (loading) {
+    return (
+      <div className="px-4 py-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading challenges...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Dance Challenges</h1>
-        <p className="text-text-secondary">Compete, create, and showcase your moves</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
+            Dance Challenges
+          </h1>
+          <p className="text-text-secondary">
+            Join trending challenges and showcase your moves
+          </p>
+        </div>
+
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          variant="primary"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create Challenge
+        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-primary mb-1">{activeChallenges.length}</div>
-          <div className="text-xs text-text-secondary">Active</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-accent mb-1">{upcomingChallenges.length}</div>
-          <div className="text-xs text-text-secondary">Upcoming</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-primary mb-1">1.2k</div>
-          <div className="text-xs text-text-secondary">Participants</div>
-        </Card>
-      </div>
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TextField
+            placeholder="Search challenges..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            startIcon={<Search className="w-4 h-4" />}
+          />
 
-      {/* Create Challenge CTA */}
-      <Card className="p-6 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-text-primary mb-1">Create Your Own Challenge</h3>
-            <p className="text-sm text-text-secondary">Start a challenge and invite the community to participate</p>
-          </div>
-          <Button variant="primary" onClick={handleCreateChallenge}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create
-          </Button>
+          <Select
+            options={[
+              { value: 'all', label: 'All Difficulties' },
+              { value: 'beginner', label: 'Beginner' },
+              { value: 'intermediate', label: 'Intermediate' },
+              { value: 'advanced', label: 'Advanced' },
+            ]}
+            value={selectedDifficulty}
+            onChange={setSelectedDifficulty}
+            placeholder="Select difficulty"
+          />
+
+          <Select
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'ended', label: 'Ended' },
+            ]}
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+            placeholder="Select status"
+          />
         </div>
       </Card>
 
-      {/* Tabs and Filters */}
-      <div className="space-y-4">
-        {/* Tabs */}
-        <div className="flex space-x-1 bg-surface/30 rounded-lg p-1">
-          {[
-            { id: 'active', label: 'Active', count: activeChallenges.length },
-            { id: 'upcoming', label: 'Upcoming', count: upcomingChallenges.length },
-            { id: 'ended', label: 'Ended', count: endedChallenges.length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {tab.label}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                activeTab === tab.id ? 'bg-white/20' : 'bg-surface'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-text-secondary">
-            {getCurrentChallenges().length} challenges
+      {/* Active Challenges */}
+      {activeChallenges.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            Active Challenges ({activeChallenges.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeChallenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.challengeId}
+                challenge={challenge}
+                currentUserId={currentUserId}
+                hasSubmitted={hasUserSubmitted(challenge.challengeId)}
+                onJoin={handleJoinChallenge}
+                onView={(challenge) => console.log('View challenge:', challenge)}
+                onSubmit={handleSubmitToChallenge}
+              />
+            ))}
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
         </div>
+      )}
 
-        {/* Filters */}
-        {showFilters && (
-          <Card className="p-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Difficulty
-              </label>
-              <div className="flex gap-2">
-                {['all', 'easy', 'medium', 'hard'].map((difficulty) => (
-                  <button
-                    key={difficulty}
-                    onClick={() => setSelectedDifficulty(difficulty)}
-                    className={cn(
-                      'px-3 py-1 text-sm rounded-full transition-colors duration-200 capitalize',
-                      selectedDifficulty === difficulty
-                        ? 'bg-primary text-white'
-                        : 'bg-surface text-text-secondary hover:text-text-primary'
-                    )}
-                  >
-                    {difficulty}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Challenges Grid */}
-      {getCurrentChallenges().length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {getCurrentChallenges().map((challenge) => (
-            <ChallengeCard
-              key={challenge.challengeId}
-              challenge={challenge}
-              onJoin={handleJoinChallenge}
-              onView={handleViewChallenge}
-            />
-          ))}
+      {/* Upcoming Challenges */}
+      {upcomingChallenges.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-4">
+            Upcoming Challenges ({upcomingChallenges.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upcomingChallenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.challengeId}
+                challenge={challenge}
+                currentUserId={currentUserId}
+                onView={(challenge) => console.log('View challenge:', challenge)}
+              />
+            ))}
+          </div>
         </div>
-      ) : (
+      )}
+
+      {/* Ended Challenges */}
+      {endedChallenges.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-4">
+            Past Challenges ({endedChallenges.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {endedChallenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.challengeId}
+                challenge={challenge}
+                currentUserId={currentUserId}
+                onView={(challenge) => console.log('View challenge:', challenge)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredChallenges.length === 0 && (
         <Card className="p-8 text-center">
-          <div className="text-4xl mb-4">
-            {activeTab === 'active' && '🏆'}
-            {activeTab === 'upcoming' && '⏰'}
-            {activeTab === 'ended' && '🎯'}
-          </div>
+          <Trophy className="w-12 h-12 text-text-secondary mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-text-primary mb-2">
-            No {activeTab} challenges
+            No challenges found
           </h3>
           <p className="text-text-secondary mb-4">
-            {activeTab === 'active' && "No challenges are currently active. Check back soon!"}
-            {activeTab === 'upcoming' && "No upcoming challenges scheduled yet."}
-            {activeTab === 'ended' && "No completed challenges to show."}
+            {searchQuery || selectedDifficulty !== 'all' || selectedStatus !== 'all'
+              ? 'Try adjusting your filters or search terms.'
+              : 'Be the first to create a dance challenge!'
+            }
           </p>
-          {activeTab === 'active' && (
-            <Button variant="primary" onClick={handleCreateChallenge}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Challenge
-            </Button>
-          )}
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            variant="primary"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Challenge
+          </Button>
         </Card>
       )}
 
-      {/* Featured Challenge */}
-      {activeTab === 'active' && activeChallenges.length > 0 && (
-        <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Trophy className="w-5 h-5 text-accent" />
-            <span className="text-sm font-medium text-accent">Featured Challenge</span>
-          </div>
-          <h3 className="text-xl font-bold text-text-primary mb-2">
-            Weekly Freestyle Battle
-          </h3>
-          <p className="text-text-secondary mb-4">
-            Show off your best freestyle moves in this week's featured challenge. Winner takes home 500 USDC!
-          </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4 text-text-secondary" />
-                <span className="text-sm text-text-secondary">234 participants</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-text-secondary" />
-                <span className="text-sm text-text-secondary">3 days left</span>
-              </div>
-            </div>
-            <Button variant="accent" size="lg">
-              Join Battle
-            </Button>
-          </div>
-        </Card>
-      )}
+      {/* Create Challenge Modal */}
+      <CreateChallengeModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateChallenge}
+      />
     </div>
   );
 }
+
+interface CreateChallengeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (data: {
+    title: string;
+    description: string;
+    difficulty: string;
+    startDate: string;
+    endDate: string;
+    prize?: string;
+  }) => void;
+}
+
+function CreateChallengeModal({
+  isOpen,
+  onClose,
+  onCreate
+}: CreateChallengeModalProps) {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    difficulty: 'beginner',
+    startDate: '',
+    endDate: '',
+    prize: '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onCreate(formData);
+    setFormData({
+      title: '',
+      description: '',
+      difficulty: 'beginner',
+      startDate: '',
+      endDate: '',
+      prize: '',
+    });
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create Dance Challenge"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <TextField
+          label="Challenge Title"
+          value={formData.title}
+          onChange={(e) => handleInputChange('title', e.target.value)}
+          placeholder="Enter challenge title"
+          fullWidth
+        />
+
+        <TextArea
+          label="Description"
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          placeholder="Describe your challenge..."
+          fullWidth
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            options={[
+              { value: 'beginner', label: 'Beginner' },
+              { value: 'intermediate', label: 'Intermediate' },
+              { value: 'advanced', label: 'Advanced' },
+            ]}
+            value={formData.difficulty}
+            onChange={(value) => handleInputChange('difficulty', value)}
+            placeholder="Select difficulty"
+          />
+
+          <TextField
+            label="Prize (optional)"
+            value={formData.prize}
+            onChange={(e) => handleInputChange('prize', e.target.value)}
+            placeholder="e.g., 5 USDC"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <TextField
+            label="Start Date"
+            type="datetime-local"
+            value={formData.startDate}
+            onChange={(e) => handleInputChange('startDate', e.target.value)}
+            fullWidth
+          />
+
+          <TextField
+            label="End Date"
+            type="datetime-local"
+            value={formData.endDate}
+            onChange={(e) => handleInputChange('endDate', e.target.value)}
+            fullWidth
+          />
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            Create Challenge
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+

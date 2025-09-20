@@ -1,141 +1,275 @@
-# GrooveSync - Base Mini App
+# GrooveSync - Sync Your Moves, Share Your Dance
+
+![GrooveSync Logo](https://via.placeholder.com/150x50/FF6B6B/FFFFFF?text=GrooveSync)
 
 A social dance practice app for Base users to access tutorials, practice with AI feedback, and connect with virtual dance partners.
 
-## Features
+## 🌟 Features
 
-- **On-Demand Dance Tutorials**: Curated library of video tutorials for various dance styles
-- **AI Practice Feedback**: Basic AI analysis of practice clips with timing and form feedback
-- **Virtual Practice Sync**: Connect with other dancers for synchronized practice sessions
-- **Dance Challenges Showcase**: Create and participate in dance challenges
+### Core Features
+- **On-Demand Dance Tutorials**: Curated video tutorials for various dance styles
+- **AI Practice Feedback**: Basic AI analysis for timing and form (paid feature)
+- **Virtual Practice Sync**: Connect with others for synchronized practice sessions
+- **Dance Challenges**: Create and participate in dance challenges with short clips
 
-## Tech Stack
+### Technical Features
+- **Real-time Synchronization**: Socket.IO for live practice sessions
+- **AI-Powered Analysis**: OpenAI integration for dance feedback
+- **Decentralized Storage**: IPFS/Filecoin for video storage
+- **Base Integration**: Wallet connectivity and micro-transactions
+- **Farcaster Auth**: Seamless social authentication
 
-- **Framework**: Next.js 15 with App Router
-- **Styling**: Tailwind CSS with custom design system
-- **Blockchain**: Base network integration via MiniKit
-- **Identity**: OnchainKit for wallet and identity management
-- **TypeScript**: Full type safety throughout the application
+## 🚀 Quick Start
 
-## Getting Started
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Git
 
-1. **Install dependencies**:
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/vistara-apps/fb07357d-92fa-4c26-baab-4580b895c268.git
+   cd fb07357d-92fa-4c26-baab-4580b895c268
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. **Set up environment variables**:
-   Copy `.env.local` and add your API keys:
+3. **Set up environment variables**
    ```bash
-   NEXT_PUBLIC_MINIKIT_API_KEY=your_minikit_api_key_here
-   NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_onchainkit_api_key_here
+   cp .env.example .env.local
+   ```
+   Edit `.env.local` with your API keys and configuration.
+
+4. **Set up the database**
+   ```bash
+   npm run db:generate
+   npm run db:push
+   npm run db:seed
    ```
 
-3. **Run the development server**:
+5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**:
+6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-## Project Structure
+## 📁 Project Structure
 
 ```
-├── app/                    # Next.js App Router
-│   ├── layout.tsx         # Root layout with providers
-│   ├── page.tsx           # Main application page
-│   ├── providers.tsx      # MiniKit and OnchainKit providers
-│   └── globals.css        # Global styles and Tailwind imports
-├── components/            # React components
-│   ├── ui/               # Reusable UI components
-│   ├── layout/           # Layout components
-│   ├── features/         # Feature-specific components
-│   └── views/            # Page view components
-├── lib/                  # Utilities and types
-│   ├── types.ts          # TypeScript type definitions
-│   ├── utils.ts          # Utility functions
-│   └── constants.ts      # App constants and mock data
-└── public/               # Static assets
+groovesync/
+├── app/                          # Next.js app directory
+│   ├── api/                      # API routes
+│   │   ├── tutorials/           # Tutorial CRUD endpoints
+│   │   ├── challenges/          # Challenge management
+│   │   ├── practice-sessions/   # Practice session endpoints
+│   │   ├── ai-feedback/         # AI analysis endpoints
+│   │   └── socket/              # Socket.IO server setup
+│   ├── globals.css              # Global styles
+│   ├── layout.tsx               # Root layout
+│   ├── page.tsx                 # Home page
+│   └── providers.tsx            # App providers
+├── components/                   # React components
+│   ├── ui/                      # Reusable UI components
+│   ├── features/                # Feature-specific components
+│   ├── views/                   # Page-level components
+│   └── layout/                  # Layout components
+├── lib/                         # Utility libraries
+│   ├── hooks/                   # Custom React hooks
+│   ├── services/                # API service functions
+│   ├── types.ts                 # TypeScript type definitions
+│   ├── constants.ts             # App constants
+│   └── utils.ts                 # Utility functions
+├── prisma/                      # Database schema
+│   └── schema.prisma            # Prisma schema definition
+├── public/                      # Static assets
+└── scripts/                     # Utility scripts
+    └── seed.ts                  # Database seeding script
 ```
 
-## Key Components
+## 🛠️ Tech Stack
 
-### UI Components
-- **Button**: Versatile button component with multiple variants
-- **Card**: Container component for content sections
-- **Avatar**: User profile image component with fallbacks
-- **VideoPlayer**: Custom video player for tutorials
-- **AvatarGroup**: Display multiple user avatars
+### Frontend
+- **Next.js 15** - React framework with App Router
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - Modern UI components
 
-### Feature Components
-- **TutorialCard**: Display dance tutorial information
-- **ChallengeCard**: Show challenge details and participation
-- **PracticeSessionCard**: Live and recorded practice sessions
+### Backend
+- **Next.js API Routes** - Serverless API endpoints
+- **Prisma** - Database ORM
+- **SQLite** - Development database (easily switchable to PostgreSQL)
 
-### Views
-- **HomeView**: Main dashboard with featured content
-- **TutorialsView**: Browse and filter dance tutorials
-- **PracticeView**: Solo practice, partner finding, and AI feedback
-- **ChallengesView**: Active, upcoming, and completed challenges
-- **ProfileView**: User profile and statistics
+### Real-time & AI
+- **Socket.IO** - Real-time communication
+- **OpenAI API** - AI-powered dance analysis
+- **IPFS/Filecoin** - Decentralized storage
 
-## Design System
+### Blockchain
+- **Base** - Ethereum Layer 2 network
+- **OnchainKit** - Base integration toolkit
+- **Farcaster** - Social authentication
 
-The app uses a custom design system with:
+## 📊 Database Schema
 
-- **Colors**: Dark theme with purple/orange accent colors
-- **Typography**: Clean, readable font hierarchy
-- **Spacing**: Consistent spacing scale (sm: 4px, md: 8px, lg: 16px, xl: 24px)
-- **Animations**: Smooth transitions and dance-themed animations
-- **Mobile-first**: Responsive design optimized for mobile devices
+### Core Entities
 
-## Business Model
+#### User
+```typescript
+{
+  userId: string;        // Farcaster FID
+  username: string;
+  profilePicUrl?: string;
+  walletAddress: string;
+  createdAt: DateTime;
+  updatedAt: DateTime;
+}
+```
 
-- **Freemium**: Basic features free, premium AI feedback paid
-- **Micro-transactions**: Pay per AI analysis session
-- **Pricing**: 0.5 USDC for basic feedback, 2.0 USDC for premium analysis
+#### DanceTutorial
+```typescript
+{
+  tutorialId: string;
+  title: string;
+  description: string;
+  videoUrl: string;
+  danceStyle: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  duration: number;      // in seconds
+  instructor: string;
+  tags: string[];
+}
+```
 
-## Development
+#### PracticeSession
+```typescript
+{
+  sessionId: string;
+  userId1: string;       // Creator
+  userId2?: string;      // Partner (optional)
+  tutorialId?: string;
+  sessionType: 'solo' | 'partner' | 'group';
+  startTime: DateTime;
+  endTime?: DateTime;
+  isLive: boolean;
+}
+```
 
-### Adding New Features
+#### Challenge
+```typescript
+{
+  challengeId: string;
+  title: string;
+  description: string;
+  startDate: DateTime;
+  endDate: DateTime;
+  creatorId: string;
+  difficulty: string;
+  prize?: string;
+  participantCount: number;
+}
+```
 
-1. Define types in `lib/types.ts`
-2. Create components in appropriate directories
-3. Add mock data to `lib/constants.ts`
-4. Implement views and integrate with main app
+#### Submission
+```typescript
+{
+  submissionId: string;
+  challengeId: string;
+  userId: string;
+  videoUrl: string;
+  timestamp: DateTime;
+  likes: number;
+  views: number;
+}
+```
 
-### Styling Guidelines
+## 🔗 API Endpoints
 
-- Use Tailwind CSS classes
-- Follow the design system tokens
-- Ensure mobile-first responsive design
-- Use semantic color names (primary, accent, surface)
+### Tutorials
+- `GET /api/tutorials` - Get all tutorials
+- `POST /api/tutorials` - Create new tutorial
+- `GET /api/tutorials/[id]` - Get tutorial by ID
+- `PUT /api/tutorials/[id]` - Update tutorial
+- `DELETE /api/tutorials/[id]` - Delete tutorial
 
-### State Management
+### Challenges
+- `GET /api/challenges` - Get all challenges
+- `POST /api/challenges` - Create new challenge
+- `GET /api/challenges/[id]` - Get challenge by ID
 
-Currently uses React's built-in state management. For complex state, consider adding:
-- Zustand for client state
-- React Query for server state
-- Context for shared app state
+### Practice Sessions
+- `GET /api/practice-sessions` - Get all sessions
+- `POST /api/practice-sessions` - Create new session
+- `PUT /api/practice-sessions/[id]` - Update session
 
-## Deployment
+### AI Feedback
+- `POST /api/ai-feedback/analyze` - Analyze dance video
 
-The app is designed to be deployed as a Base Mini App:
+## 🎨 Design System
 
-1. Build the application: `npm run build`
-2. Deploy to your hosting platform
-3. Configure the Mini App manifest
-4. Submit for Base App integration
+### Colors
+- **Primary**: `hsl(240 90% 60%)` - Blue
+- **Accent**: `hsl(30 90% 60%)` - Orange
+- **Background**: `hsl(230 15% 8%)` - Dark blue-gray
+- **Surface**: `hsl(230 15% 15%)` - Lighter blue-gray
 
-## Contributing
+### Typography
+- **Display**: 3xl, bold
+- **Heading**: xl, semibold
+- **Body**: base, normal
+- **Caption**: sm, medium
+
+### Components
+- Responsive grid layouts
+- Smooth animations (cubic-bezier easing)
+- Dark theme optimized
+- Mobile-first design
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Add environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Manual Deployment
+```bash
+# Build the application
+npm run build
+
+# Start production server
+npm start
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Open a Pull Request
 
-## License
+## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built for the Base ecosystem
+- Inspired by social dance communities
+- Powered by modern web technologies
+
+## 📞 Support
+
+For support, email support@groovesync.com or join our Discord community.
+
+---
+
+**Made with ❤️ for the dance community on Base**
+
