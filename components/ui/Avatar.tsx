@@ -9,7 +9,8 @@ export function Avatar({
   size = 'md',
   fallback,
   className = '',
-}: AvatarProps) {
+  style,
+}: AvatarProps & { style?: React.CSSProperties }) {
   const sizes = {
     sm: 'w-8 h-8 text-sm',
     md: 'w-12 h-12 text-base',
@@ -29,6 +30,7 @@ export function Avatar({
         sizes[size],
         className
       )}
+      style={style}
     >
       {src ? (
         <img
