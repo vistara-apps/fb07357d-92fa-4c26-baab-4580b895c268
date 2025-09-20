@@ -1,0 +1,14 @@
+{
+  "name": "GrooveSync",
+  "description": "GrooveSync is a Base Mini App built with Zara.",
+  "image": "https://dummyimage.com/1200x628/0a0b0d/ffffff.png&text=OG",
+  "external_url": "https://fb07357d-92fa-4c26-baab-4580b895c268.vercel.app",
+  "properties": {
+    "app": {
+      "name": "GrooveSync",
+      "description": "GrooveSync is a Base Mini App built with Zara.",
+      "url": "https://fb07357d-92fa-4c26-baab-4580b895c268.vercel.app",
+      "icon": "https://0co.to/images/zara-2.png"
+    }
+  }
+}
