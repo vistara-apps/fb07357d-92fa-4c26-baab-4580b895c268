@@ -1,271 +1,313 @@
 'use client';
 
-import { useState } from 'react';
-import { Users, Plus, Clock, Video, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Play, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { TextField } from '@/components/ui/TextField';
+import { Select } from '@/components/ui/Dropdown';
 import { PracticeSessionCard } from '@/components/features/PracticeSessionCard';
-import { PracticeSession } from '@/lib/types';
-import { generateId } from '@/lib/utils';
+import { Modal } from '@/components/ui/Modal';
+import { PracticeSession, DanceTutorial } from '@/lib/types';
+import { practiceSessionApi, tutorialApi } from '@/lib/services/api';
+import { DANCE_STYLES } from '@/lib/constants';
 
-export function PracticeView() {
-  const [activeTab, setActiveTab] = useState<'live' | 'solo' | 'ai'>('live');
+interface PracticeViewProps {
+  currentUserId?: string;
+}
 
-  // Mock practice sessions
-  const mockSessions: PracticeSession[] = [
-    {
-      sessionId: '1',
-      userId1: 'user1',
-      userId2: 'user2',
-      tutorialId: '1',
-      startTime: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-      isLive: true,
-      sessionType: 'partner',
-    },
-    {
-      sessionId: '2',
-      userId1: 'user3',
-      startTime: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-      isLive: true,
-      sessionType: 'solo',
-    },
-    {
-      sessionId: '3',
-      userId1: 'user4',
-      userId2: 'user5',
-      startTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      endTime: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
-      isLive: false,
-      sessionType: 'partner',
-      recordingUrl: '/recordings/session3.mp4',
-    },
-  ];
+export function PracticeView({ currentUserId }: PracticeViewProps) {
+  const [sessions, setSessions] = useState<PracticeSession[]>([]);
+  const [tutorials, setTutorials] = useState<DanceTutorial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
 
-  const liveSessions = mockSessions.filter(s => s.isLive);
-  const pastSessions = mockSessions.filter(s => !s.isLive);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleJoinSession = (session: PracticeSession) => {
-    console.log('Joining session:', session.sessionId);
+  const fetchData = async () => {
+    try {
+      const [sessionsData, tutorialsData] = await Promise.all([
+        practiceSessionApi.getAll(),
+        tutorialApi.getAll(),
+      ]);
+
+      setSessions(sessionsData);
+      setTutorials(tutorialsData);
+    } catch (error) {
+      console.error('Error fetching practice data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleWatchSession = (session: PracticeSession) => {
-    console.log('Watching session:', session.sessionId);
+  const handleCreateSession = async (sessionData: {
+    tutorialId?: string;
+    sessionType: string;
+  }) => {
+    if (!currentUserId) return;
+
+    try {
+      const newSession = await practiceSessionApi.create({
+        userId1: currentUserId,
+        tutorialId: sessionData.tutorialId,
+        sessionType: sessionData.sessionType as any,
+        startTime: new Date().toISOString(),
+        isLive: false,
+      });
+
+      setSessions(prev => [newSession, ...prev]);
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating session:', error);
+    }
   };
 
-  const handleStartSoloSession = () => {
-    console.log('Starting solo practice session');
+  const handleJoinSession = async (session: PracticeSession) => {
+    if (!currentUserId || session.userId2) return;
+
+    try {
+      const updatedSession = await practiceSessionApi.update(session.sessionId, {
+        userId2: currentUserId,
+        isLive: true,
+      });
+
+      setSessions(prev =>
+        prev.map(s => s.sessionId === session.sessionId ? updatedSession : s)
+      );
+    } catch (error) {
+      console.error('Error joining session:', error);
+    }
   };
 
-  const handleStartAISession = () => {
-    console.log('Starting AI feedback session');
-  };
+  const filteredSessions = sessions.filter(session => {
+    const matchesSearch = !searchQuery ||
+      session.tutorial?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      session.user1?.username.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const handleFindPartner = () => {
-    console.log('Finding practice partner');
-  };
+    const matchesStyle = selectedStyle === 'all' ||
+      session.tutorial?.danceStyle === selectedStyle;
+
+    const matchesType = selectedType === 'all' ||
+      session.sessionType === selectedType;
+
+    return matchesSearch && matchesStyle && matchesType;
+  });
+
+  const liveSessions = filteredSessions.filter(s => s.isLive);
+  const availableSessions = filteredSessions.filter(s => !s.isLive && !s.userId2);
+
+  if (loading) {
+    return (
+      <div className="px-4 py-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading practice sessions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Practice Sessions</h1>
-        <p className="text-text-secondary">Practice solo, with partners, or get AI feedback</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
+            Practice Sessions
+          </h1>
+          <p className="text-text-secondary">
+            Join live sessions or create your own practice room
+          </p>
+        </div>
+
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          variant="primary"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create Session
+        </Button>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={handleStartSoloSession}>
-          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Video className="w-6 h-6 text-primary" />
-          </div>
-          <h3 className="font-semibold text-text-primary mb-1">Solo Practice</h3>
-          <p className="text-sm text-text-secondary mb-3">Practice at your own pace</p>
-          <Button variant="primary" size="sm" className="w-full">
-            Start Solo
-          </Button>
-        </Card>
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TextField
+            placeholder="Search sessions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            startIcon={<Search className="w-4 h-4" />}
+          />
 
-        <Card className="p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={handleFindPartner}>
-          <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Users className="w-6 h-6 text-accent" />
-          </div>
-          <h3 className="font-semibold text-text-primary mb-1">Find Partner</h3>
-          <p className="text-sm text-text-secondary mb-3">Connect with other dancers</p>
-          <Button variant="accent" size="sm" className="w-full">
-            Find Partner
-          </Button>
-        </Card>
+          <Select
+            options={[
+              { value: 'all', label: 'All Styles' },
+              ...DANCE_STYLES.map(style => ({
+                value: style.name.toLowerCase(),
+                label: style.name
+              }))
+            ]}
+            value={selectedStyle}
+            onChange={setSelectedStyle}
+            placeholder="Select style"
+          />
 
-        <Card className="p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={handleStartAISession}>
-          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Zap className="w-6 h-6 text-primary" />
-          </div>
-          <h3 className="font-semibold text-text-primary mb-1">AI Feedback</h3>
-          <p className="text-sm text-text-secondary mb-3">Get instant analysis</p>
-          <Button variant="primary" size="sm" className="w-full">
-            Start AI Session
-          </Button>
-        </Card>
-      </div>
+          <Select
+            options={[
+              { value: 'all', label: 'All Types' },
+              { value: 'solo', label: 'Solo' },
+              { value: 'partner', label: 'Partner' },
+              { value: 'group', label: 'Group' },
+            ]}
+            value={selectedType}
+            onChange={setSelectedType}
+            placeholder="Select type"
+          />
+        </div>
+      </Card>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-surface/30 rounded-lg p-1">
-        {[
-          { id: 'live', label: 'Live Sessions', icon: Clock },
-          { id: 'solo', label: 'Solo Practice', icon: Video },
-          { id: 'ai', label: 'AI Feedback', icon: Zap },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+      {/* Live Sessions */}
+      {liveSessions.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            Live Now ({liveSessions.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {liveSessions.map((session) => (
+              <PracticeSessionCard
+                key={session.sessionId}
+                session={session}
+                currentUserId={currentUserId}
+                onJoin={handleJoinSession}
+                onView={(session) => console.log('View session:', session)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Available Sessions */}
+      <div>
+        <h2 className="text-xl font-semibold text-text-primary mb-4">
+          Available Sessions ({availableSessions.length})
+        </h2>
+
+        {availableSessions.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Users className="w-12 h-12 text-text-secondary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
+              No available sessions
+            </h3>
+            <p className="text-text-secondary mb-4">
+              Be the first to create a practice session!
+            </p>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              variant="primary"
             >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Content based on active tab */}
-      {activeTab === 'live' && (
-        <div className="space-y-6">
-          {/* Live Sessions */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                Live Sessions ({liveSessions.length})
-              </h2>
-              <Button variant="secondary" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Session
-              </Button>
-            </div>
-            
-            {liveSessions.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {liveSessions.map((session) => (
-                  <PracticeSessionCard
-                    key={session.sessionId}
-                    session={session}
-                    onJoin={handleJoinSession}
-                    onWatch={handleWatchSession}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card className="p-8 text-center">
-                <div className="text-4xl mb-4">🎭</div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">
-                  No live sessions right now
-                </h3>
-                <p className="text-text-secondary mb-4">
-                  Be the first to start a practice session!
-                </p>
-                <Button variant="primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Start New Session
-                </Button>
-              </Card>
-            )}
-          </div>
-
-          {/* Recent Sessions */}
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary mb-4">Recent Sessions</h2>
-            {pastSessions.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pastSessions.map((session) => (
-                  <PracticeSessionCard
-                    key={session.sessionId}
-                    session={session}
-                    onJoin={handleJoinSession}
-                    onWatch={handleWatchSession}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card className="p-6 text-center">
-                <p className="text-text-secondary">No recent sessions to show</p>
-              </Card>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'solo' && (
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-4">Solo Practice Mode</h2>
-            <p className="text-text-secondary mb-4">
-              Practice at your own pace with our guided sessions. Perfect for building confidence and mastering new moves.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button variant="primary" size="lg" className="w-full">
-                <Video className="w-5 h-5 mr-2" />
-                Start Free Practice
-              </Button>
-              <Button variant="secondary" size="lg" className="w-full">
-                <Clock className="w-5 h-5 mr-2" />
-                Guided Session
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'ai' && (
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-text-primary mb-4">AI Feedback Sessions</h2>
-            <p className="text-text-secondary mb-4">
-              Get instant feedback on your dance moves with our AI-powered analysis system.
-            </p>
-            
-            {/* Pricing Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <Card className="p-4 border border-surface/40">
-                <h3 className="font-semibold text-text-primary mb-2">Basic Feedback</h3>
-                <div className="text-2xl font-bold text-primary mb-2">0.5 USDC</div>
-                <ul className="text-sm text-text-secondary space-y-1 mb-4">
-                  <li>• Rhythm analysis</li>
-                  <li>• Basic form feedback</li>
-                  <li>• Overall score</li>
-                </ul>
-                <Button variant="primary" size="sm" className="w-full">
-                  Try Basic
-                </Button>
-              </Card>
-              
-              <Card className="p-4 border border-accent/40">
-                <h3 className="font-semibold text-text-primary mb-2">Premium Analysis</h3>
-                <div className="text-2xl font-bold text-accent mb-2">2.0 USDC</div>
-                <ul className="text-sm text-text-secondary space-y-1 mb-4">
-                  <li>• Detailed movement analysis</li>
-                  <li>• Personalized suggestions</li>
-                  <li>• Progress tracking</li>
-                  <li>• Video breakdown</li>
-                </ul>
-                <Button variant="accent" size="sm" className="w-full">
-                  Get Premium
-                </Button>
-              </Card>
-            </div>
-            
-            <Button variant="secondary" size="lg" className="w-full">
-              <Zap className="w-5 h-5 mr-2" />
-              Upload Practice Video
+              <Plus className="w-4 h-4 mr-2" />
+              Create Session
             </Button>
           </Card>
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availableSessions.map((session) => (
+              <PracticeSessionCard
+                key={session.sessionId}
+                session={session}
+                currentUserId={currentUserId}
+                onJoin={handleJoinSession}
+                onView={(session) => console.log('View session:', session)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Session Modal */}
+      <CreateSessionModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateSession}
+        tutorials={tutorials}
+      />
     </div>
   );
 }
+
+interface CreateSessionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (data: { tutorialId?: string; sessionType: string }) => void;
+  tutorials: DanceTutorial[];
+}
+
+function CreateSessionModal({
+  isOpen,
+  onClose,
+  onCreate,
+  tutorials
+}: CreateSessionModalProps) {
+  const [selectedTutorial, setSelectedTutorial] = useState<string>('');
+  const [sessionType, setSessionType] = useState<string>('solo');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onCreate({
+      tutorialId: selectedTutorial || undefined,
+      sessionType,
+    });
+    setSelectedTutorial('');
+    setSessionType('solo');
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create Practice Session"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Select
+          options={[
+            { value: '', label: 'General Practice (no tutorial)' },
+            ...tutorials.map(tutorial => ({
+              value: tutorial.tutorialId,
+              label: tutorial.title
+            }))
+          ]}
+          value={selectedTutorial}
+          onChange={setSelectedTutorial}
+          placeholder="Select a tutorial (optional)"
+        />
+
+        <Select
+          options={[
+            { value: 'solo', label: 'Solo Practice' },
+            { value: 'partner', label: 'Partner Practice' },
+            { value: 'group', label: 'Group Practice' },
+          ]}
+          value={sessionType}
+          onChange={setSessionType}
+          placeholder="Select session type"
+        />
+
+        <div className="flex gap-3 justify-end">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            Create Session
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+

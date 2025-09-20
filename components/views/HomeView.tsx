@@ -1,57 +1,96 @@
 'use client';
 
-import { useState } from 'react';
-import { Play, Users, Trophy, TrendingUp, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Users, Trophy, TrendingUp, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TutorialCard } from '@/components/features/TutorialCard';
 import { ChallengeCard } from '@/components/features/ChallengeCard';
-import { MOCK_TUTORIALS, MOCK_CHALLENGES, DANCE_STYLES } from '@/lib/constants';
 import { DanceTutorial, Challenge } from '@/lib/types';
+import { tutorialApi, challengeApi } from '@/lib/services/api';
+import { Loading } from '@/components/ui/Loading';
 
-export function HomeView() {
-  const [selectedTutorial, setSelectedTutorial] = useState<DanceTutorial | null>(null);
+interface HomeViewProps {
+  onPlayTutorial?: (tutorial: DanceTutorial) => void;
+  onPracticeTutorial?: (tutorial: DanceTutorial) => void;
+  onViewChallenge?: (challenge: Challenge) => void;
+}
 
-  const featuredTutorials = MOCK_TUTORIALS.slice(0, 3);
-  const activeChallenges = MOCK_CHALLENGES.filter(c => 
-    new Date() >= c.startDate && new Date() <= c.endDate
-  ).slice(0, 2);
+export function HomeView({
+  onPlayTutorial,
+  onPracticeTutorial,
+  onViewChallenge
+}: HomeViewProps) {
+  const [featuredTutorials, setFeaturedTutorials] = useState<DanceTutorial[]>([]);
+  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchHomeData();
+  }, []);
+
+  const fetchHomeData = async () => {
+    try {
+      const [tutorialsData, challengesData] = await Promise.all([
+        tutorialApi.getAll(),
+        challengeApi.getAll(),
+      ]);
+
+      // Get featured tutorials (first 3)
+      setFeaturedTutorials(tutorialsData.slice(0, 3));
+
+      // Get active challenges (ongoing challenges)
+      const now = new Date();
+      const activeChallengesData = challengesData.filter(challenge => {
+        const startDate = new Date(challenge.startDate);
+        const endDate = new Date(challenge.endDate);
+        return now >= startDate && now <= endDate;
+      }).slice(0, 2);
+
+      setActiveChallenges(activeChallengesData);
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePlayTutorial = (tutorial: DanceTutorial) => {
-    setSelectedTutorial(tutorial);
-    // In a real app, this would open a video player modal
-    console.log('Playing tutorial:', tutorial.title);
+    onPlayTutorial?.(tutorial);
   };
 
   const handlePracticeTutorial = (tutorial: DanceTutorial) => {
-    console.log('Starting practice for:', tutorial.title);
-  };
-
-  const handleJoinChallenge = (challenge: Challenge) => {
-    console.log('Joining challenge:', challenge.title);
+    onPracticeTutorial?.(tutorial);
   };
 
   const handleViewChallenge = (challenge: Challenge) => {
-    console.log('Viewing challenge:', challenge.title);
+    onViewChallenge?.(challenge);
   };
+
+  if (loading) {
+    return (
+      <div className="px-4 py-6">
+        <Loading text="Loading your dance journey..." />
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 space-y-8">
       {/* Hero Section */}
-      <section className="text-center">
-        <div className="relative mb-6">
-          <div className="w-32 h-32 bg-gradient-to-br from-primary via-accent to-primary rounded-full flex items-center justify-center mx-auto dance-glow animate-pulse-glow">
-            <span className="text-6xl">💃</span>
-          </div>
+      <div className="text-center py-12">
+        <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">💃</span>
         </div>
-        <h1 className="text-3xl font-bold text-text-primary mb-2">
+        <h1 className="text-4xl font-bold text-text-primary mb-4">
           Welcome to GrooveSync
         </h1>
-        <p className="text-text-secondary text-lg mb-6">
-          Your journey to dance mastery starts here
+        <p className="text-xl text-text-secondary max-w-2xl mx-auto mb-8">
+          Sync your moves, share your dance. Learn new techniques, practice with AI feedback,
+          and connect with dancers worldwide.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="primary" size="lg" className="gradient-bg">
+        <div className="flex gap-4 justify-center">
+          <Button variant="primary" size="lg">
             <Play className="w-5 h-5 mr-2" />
             Start Learning
           </Button>
@@ -60,123 +99,152 @@ export function HomeView() {
             Find Partners
           </Button>
         </div>
-      </section>
+      </div>
 
       {/* Quick Stats */}
-      <section>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary mb-1">50+</div>
-            <div className="text-sm text-text-secondary">Tutorials</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-accent mb-1">1.2k</div>
-            <div className="text-sm text-text-secondary">Dancers</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary mb-1">24</div>
-            <div className="text-sm text-text-secondary">Live Sessions</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-accent mb-1">8</div>
-            <div className="text-sm text-text-secondary">Challenges</div>
-          </Card>
-        </div>
-      </section>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-4 text-center">
+          <Play className="w-8 h-8 text-primary mx-auto mb-2" />
+          <div className="text-2xl font-bold text-text-primary">
+            {featuredTutorials.length}
+          </div>
+          <div className="text-sm text-text-secondary">Tutorials</div>
+        </Card>
 
-      {/* Dance Styles */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-text-primary">Explore Styles</h2>
-          <Button variant="secondary" size="sm">
-            View All
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {DANCE_STYLES.slice(0, 8).map((style) => (
-            <Card
-              key={style.name}
-              className="p-4 text-center hover:scale-105 transition-transform duration-200 cursor-pointer"
-              hover
-            >
-              <div className={`w-12 h-12 bg-gradient-to-br ${style.color} rounded-full flex items-center justify-center mx-auto mb-2`}>
-                <span className="text-2xl">{style.emoji}</span>
-              </div>
-              <div className="text-sm font-medium text-text-primary">{style.name}</div>
-            </Card>
-          ))}
-        </div>
-      </section>
+        <Card className="p-4 text-center">
+          <Users className="w-8 h-8 text-primary mx-auto mb-2" />
+          <div className="text-2xl font-bold text-text-primary">
+            1,234
+          </div>
+          <div className="text-sm text-text-secondary">Active Dancers</div>
+        </Card>
+
+        <Card className="p-4 text-center">
+          <Trophy className="w-8 h-8 text-primary mx-auto mb-2" />
+          <div className="text-2xl font-bold text-text-primary">
+            {activeChallenges.length}
+          </div>
+          <div className="text-sm text-text-secondary">Active Challenges</div>
+        </Card>
+
+        <Card className="p-4 text-center">
+          <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
+          <div className="text-2xl font-bold text-text-primary">
+            98%
+          </div>
+          <div className="text-sm text-text-secondary">Satisfaction</div>
+        </Card>
+      </div>
 
       {/* Featured Tutorials */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <Star className="w-5 h-5 text-accent" />
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-text-primary">
             Featured Tutorials
           </h2>
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary">
             View All
           </Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featuredTutorials.map((tutorial) => (
-            <TutorialCard
-              key={tutorial.tutorialId}
-              tutorial={tutorial}
-              onPlay={handlePlayTutorial}
-              onPractice={handlePracticeTutorial}
-            />
-          ))}
-        </div>
-      </section>
+
+        {featuredTutorials.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Play className="w-12 h-12 text-text-secondary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
+              No tutorials available
+            </h3>
+            <p className="text-text-secondary">
+              Check back soon for new dance tutorials!
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredTutorials.map((tutorial) => (
+              <TutorialCard
+                key={tutorial.tutorialId}
+                tutorial={tutorial}
+                onPlay={() => handlePlayTutorial(tutorial)}
+                onPractice={() => handlePracticeTutorial?.(tutorial)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Active Challenges */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-accent" />
-            Active Challenges
-          </h2>
-          <Button variant="secondary" size="sm">
-            View All
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {activeChallenges.map((challenge) => (
-            <ChallengeCard
-              key={challenge.challengeId}
-              challenge={challenge}
-              onJoin={handleJoinChallenge}
-              onView={handleViewChallenge}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Trending Section */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-accent" />
-            Trending Now
-          </h2>
-        </div>
-        <Card className="p-6">
-          <div className="text-center">
-            <div className="text-4xl mb-3">🔥</div>
-            <h3 className="text-lg font-semibold text-text-primary mb-2">
-              K-Pop Wave Challenge
-            </h3>
-            <p className="text-text-secondary mb-4">
-              Join 500+ dancers in the hottest challenge this week
-            </p>
-            <Button variant="accent" size="lg">
-              Join the Wave
+      {activeChallenges.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-text-primary">
+              Active Challenges
+            </h2>
+            <Button variant="secondary">
+              View All
             </Button>
           </div>
-        </Card>
-      </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {activeChallenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.challengeId}
+                challenge={challenge}
+                onView={() => handleViewChallenge?.(challenge)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trending Section */}
+      <Card className="p-6 bg-gradient-to-r from-primary/5 to-accent/5">
+        <div className="flex items-center gap-6">
+          <div className="flex-shrink-0">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-semibold text-text-primary mb-2">
+              Trending This Week
+            </h3>
+            <p className="text-text-secondary mb-4">
+              "K-Pop Wave Challenge" is taking the community by storm! Join 500+ dancers
+              showing off their best moves.
+            </p>
+            <div className="flex items-center gap-4">
+              <Button variant="primary">
+                <Trophy className="w-4 h-4 mr-2" />
+                Join Challenge
+              </Button>
+              <div className="flex items-center gap-1 text-sm text-text-secondary">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <span>4.8 (120 reviews)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Call to Action */}
+      <Card className="p-8 text-center bg-gradient-to-r from-primary/10 to-accent/10">
+        <h3 className="text-2xl font-bold text-text-primary mb-4">
+          Ready to Start Your Dance Journey?
+        </h3>
+        <p className="text-text-secondary mb-6 max-w-md mx-auto">
+          Join thousands of dancers learning, practicing, and connecting through GrooveSync.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button variant="primary" size="lg">
+            <Play className="w-5 h-5 mr-2" />
+            Watch Tutorial
+          </Button>
+          <Button variant="secondary" size="lg">
+            <Users className="w-5 h-5 mr-2" />
+            Find Practice Partner
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
+

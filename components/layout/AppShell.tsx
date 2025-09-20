@@ -1,132 +1,206 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, Play, Users, Trophy, User, Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Home,
+  Play,
+  Users,
+  Trophy,
+  User,
+  Menu,
+  X,
+  Bell,
+  Settings
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { User as UserType } from '@/lib/types';
+import { NAV_ITEMS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 interface AppShellProps {
   children: React.ReactNode;
   currentView: string;
   onViewChange: (view: string) => void;
-  user?: {
-    name: string;
-    avatar?: string;
-  };
+  user?: UserType;
+  onUserMenu?: () => void;
 }
-
-const navItems = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'tutorials', label: 'Tutorials', icon: Play },
-  { id: 'practice', label: 'Practice', icon: Users },
-  { id: 'challenges', label: 'Challenges', icon: Trophy },
-  { id: 'profile', label: 'Profile', icon: User },
-];
 
 export function AppShell({
   children,
   currentView,
   onViewChange,
   user,
+  onUserMenu
 }: AppShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleViewChange = (view: string) => {
+    onViewChange(view);
+    setIsMobileMenuOpen(false);
+  };
+
+  const getNavIcon = (iconName: string) => {
+    const icons = {
+      home: Home,
+      tutorials: Play,
+      practice: Users,
+      challenges: Trophy,
+      profile: User,
+    };
+    return icons[iconName as keyof typeof icons] || Home;
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-surface/20">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-surface/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-4">
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">G</span>
+                <span className="text-lg font-bold text-white">G</span>
               </div>
-              <h1 className="text-xl font-bold text-text-primary">GrooveSync</h1>
+              <h1 className="text-xl font-bold text-text-primary hidden sm:block">
+                GrooveSync
+              </h1>
             </div>
-            
-            <div className="flex items-center gap-3">
-              {user && (
-                <Avatar
-                  src={user.avatar}
-                  alt={user.name}
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV_ITEMS.map((item) => {
+                const Icon = getNavIcon(item.id);
+                const isActive = currentView === item.id;
+
+                return (
+                  <Button
+                    key={item.id}
+                    variant={isActive ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => handleViewChange(item.id)}
+                    className="gap-2"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </nav>
+
+            {/* User Menu */}
+            <div className="flex items-center gap-4">
+              {/* Notifications */}
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="w-4 h-4" />
+                <Badge
+                  variant="destructive"
                   size="sm"
-                />
+                  className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                >
+                  3
+                </Badge>
+              </Button>
+
+              {/* User Avatar */}
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    src={user.profilePicUrl}
+                    alt={user.username}
+                    fallback={user.username[0]}
+                    size="sm"
+                  />
+                  <span className="text-sm text-text-primary hidden sm:block">
+                    {user.username}
+                  </span>
+                </div>
+              ) : (
+                <Button variant="secondary" size="sm">
+                  Sign In
+                </Button>
               )}
+
+              {/* Mobile Menu Button */}
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="md:hidden"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
-                {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
               </Button>
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Mobile Navigation Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-lg md:hidden">
-          <div className="pt-20 px-4">
-            <nav className="space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onViewChange(item.id);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors duration-200',
-                      currentView === item.id
-                        ? 'bg-primary text-white'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
+        {/* Mobile Navigation */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-surface">
+            <nav className="container mx-auto px-4 py-4">
+              <div className="flex flex-col gap-2">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = getNavIcon(item.id);
+                  const isActive = currentView === item.id;
+
+                  return (
+                    <Button
+                      key={item.id}
+                      variant={isActive ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleViewChange(item.id)}
+                      className="justify-start gap-3 w-full"
+                    >
+                      <Icon className="w-5 h-5" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </nav>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
       {/* Main Content */}
-      <main className="pb-20 md:pb-4">
+      <main className="flex-1">
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/80 backdrop-blur-lg border-t border-surface/20 md:hidden">
-        <div className="flex items-center justify-around px-2 py-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
+      {/* Bottom Navigation (Mobile) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-white/10">
+        <div className="flex items-center justify-center">
+          {NAV_ITEMS.map((item) => {
+            const Icon = getNavIcon(item.id);
             const isActive = currentView === item.id;
-            
+
             return (
               <button
                 key={item.id}
-                onClick={() => onViewChange(item.id)}
+                onClick={() => handleViewChange(item.id)}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors duration-200',
+                  'flex-1 flex flex-col items-center justify-center py-3 px-2 transition-colors',
                   isActive
                     ? 'text-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 )}
               >
-                <Icon className={cn('w-5 h-5', isActive && 'animate-dance-bounce')} />
-                <span className="text-xs font-medium">{item.label}</span>
+                <Icon className="w-5 h-5 mb-1" />
+                <span className="text-xs">{item.label}</span>
               </button>
             );
           })}
         </div>
       </nav>
+
+      {/* Bottom padding for mobile navigation */}
+      <div className="md:hidden h-16" />
     </div>
   );
 }
+

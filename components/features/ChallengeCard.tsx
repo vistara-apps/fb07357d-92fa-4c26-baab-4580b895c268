@@ -1,124 +1,159 @@
-'use client';
-
-import { Calendar, Trophy, Users, Clock } from 'lucide-react';
+import { Trophy, Calendar, Users, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { Challenge } from '@/lib/types';
-import { formatTimeAgo, getDifficultyColor } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface ChallengeCardProps {
   challenge: Challenge;
-  onJoin: (challenge: Challenge) => void;
-  onView: (challenge: Challenge) => void;
+  onJoin?: (challenge: Challenge) => void;
+  onView?: (challenge: Challenge) => void;
+  onSubmit?: (challenge: Challenge) => void;
+  currentUserId?: string;
+  hasSubmitted?: boolean;
+  className?: string;
 }
 
-export function ChallengeCard({ challenge, onJoin, onView }: ChallengeCardProps) {
-  const isActive = new Date() >= challenge.startDate && new Date() <= challenge.endDate;
-  const isUpcoming = new Date() < challenge.startDate;
-  const isEnded = new Date() > challenge.endDate;
+export function ChallengeCard({
+  challenge,
+  onJoin,
+  onView,
+  onSubmit,
+  currentUserId,
+  hasSubmitted = false,
+  className
+}: ChallengeCardProps) {
+  const isActive = new Date() >= new Date(challenge.startDate) &&
+                   new Date() <= new Date(challenge.endDate);
+  const isUpcoming = new Date() < new Date(challenge.startDate);
+  const isEnded = new Date() > new Date(challenge.endDate);
 
-  const getStatusColor = () => {
-    if (isActive) return 'text-green-400 bg-green-400/10';
-    if (isUpcoming) return 'text-blue-400 bg-blue-400/10';
-    return 'text-gray-400 bg-gray-400/10';
+  const getStatusBadge = () => {
+    if (isActive) return <Badge variant="success">Active</Badge>;
+    if (isUpcoming) return <Badge variant="primary">Upcoming</Badge>;
+    return <Badge variant="secondary">Ended</Badge>;
   };
 
-  const getStatusText = () => {
-    if (isActive) return 'Active';
-    if (isUpcoming) return 'Upcoming';
-    return 'Ended';
+  const getDifficultyColor = () => {
+    switch (challenge.difficulty) {
+      case 'easy': return 'text-green-400';
+      case 'medium': return 'text-yellow-400';
+      case 'hard': return 'text-red-400';
+      default: return 'text-text-secondary';
+    }
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 group">
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Trophy className="w-4 h-4 text-accent" />
-              <span className={cn('text-xs font-medium px-2 py-1 rounded-full', getStatusColor())}>
-                {getStatusText()}
-              </span>
-            </div>
-            <h3 className="font-semibold text-text-primary line-clamp-2">
+    <Card
+      className={cn(
+        'p-4 hover:shadow-lg transition-shadow duration-200',
+        className
+      )}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+            <Trophy className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-text-primary mb-1">
               {challenge.title}
             </h3>
-          </div>
-          <div className={cn('text-xs font-medium px-2 py-1 rounded-full bg-surface', getDifficultyColor(challenge.difficulty))}>
-            {challenge.difficulty}
-          </div>
-        </div>
-        
-        {/* Description */}
-        <p className="text-text-secondary text-sm mb-4 line-clamp-3">
-          {challenge.description}
-        </p>
-        
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-text-secondary" />
-            <span className="text-sm text-text-secondary">
-              {challenge.participantCount} joined
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-text-secondary" />
-            <span className="text-sm text-text-secondary">
-              {formatTimeAgo(challenge.endDate)}
-            </span>
-          </div>
-        </div>
-        
-        {/* Prize */}
-        {challenge.prize && (
-          <div className="bg-gradient-to-r from-accent/10 to-primary/10 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-text-primary">Prize Pool</span>
-            </div>
-            <div className="text-lg font-bold text-accent mt-1">
-              {challenge.prize}
+              {getStatusBadge()}
+              <span className={cn('text-sm font-medium', getDifficultyColor())}>
+                {challenge.difficulty}
+              </span>
             </div>
           </div>
+        </div>
+
+        {challenge.prize && (
+          <Badge variant="accent" size="sm">
+            {challenge.prize}
+          </Badge>
         )}
-        
-        {/* Tags */}
+      </div>
+
+      <p className="text-text-secondary text-sm mb-4 line-clamp-2">
+        {challenge.description}
+      </p>
+
+      {/* Creator info */}
+      {challenge.creator && (
+        <div className="flex items-center gap-2 mb-3">
+          <Avatar
+            src={challenge.creator.profilePicUrl}
+            alt={challenge.creator.username}
+            fallback={challenge.creator.username?.[0] || 'C'}
+            size="sm"
+          />
+          <span className="text-sm text-text-secondary">
+            by {challenge.creator.username}
+          </span>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-text-secondary" />
+          <span className="text-sm text-text-secondary">
+            {challenge.participantCount} participants
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-text-secondary" />
+          <span className="text-sm text-text-secondary">
+            {isActive ? 'Ends' : isUpcoming ? 'Starts' : 'Ended'} {formatDate(challenge.endDate)}
+          </span>
+        </div>
+      </div>
+
+      {/* Tags */}
+      {challenge.tags && challenge.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
-          {challenge.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-xs bg-surface/50 text-text-secondary px-2 py-1 rounded-full"
-            >
-              #{tag}
-            </span>
+          {challenge.tags.slice(0, 3).map((tag, index) => (
+            <Badge key={index} variant="secondary" size="sm">
+              {tag}
+            </Badge>
           ))}
         </div>
-        
-        {/* Actions */}
-        <div className="flex gap-2">
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          onClick={() => onView?.(challenge)}
+          variant="secondary"
+          size="sm"
+          className="flex-1"
+        >
+          View Details
+        </Button>
+
+        {isActive && !hasSubmitted && (
           <Button
-            variant="secondary"
+            onClick={() => onSubmit?.(challenge)}
+            variant="primary"
             size="sm"
-            onClick={() => onView(challenge)}
-            className="flex-1"
           >
-            View Details
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Submit
           </Button>
-          {isActive && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onJoin(challenge)}
-              className="flex-1"
-            >
-              Join Challenge
-            </Button>
-          )}
-        </div>
+        )}
+
+        {hasSubmitted && (
+          <Badge variant="success" size="sm">
+            Submitted
+          </Badge>
+        )}
       </div>
     </Card>
   );
 }
+

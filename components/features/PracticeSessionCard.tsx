@@ -1,129 +1,171 @@
-'use client';
-
-import { Users, Clock, Play, Video } from 'lucide-react';
+import { Users, Clock, Play, Pause, User } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { AvatarGroup } from '@/components/ui/AvatarGroup';
 import { PracticeSession } from '@/lib/types';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface PracticeSessionCardProps {
   session: PracticeSession;
-  onJoin: (session: PracticeSession) => void;
-  onWatch: (session: PracticeSession) => void;
+  currentUserId?: string;
+  onJoin?: (session: PracticeSession) => void;
+  onLeave?: (session: PracticeSession) => void;
+  onView?: (session: PracticeSession) => void;
+  className?: string;
 }
 
-export function PracticeSessionCard({ session, onJoin, onWatch }: PracticeSessionCardProps) {
-  const isLive = session.isLive;
-  const isSolo = session.sessionType === 'solo';
-  
-  // Mock participants data
-  const participants = [
-    { id: session.userId1, name: 'User 1', avatar: undefined },
-    ...(session.userId2 ? [{ id: session.userId2, name: 'User 2', avatar: undefined }] : []),
-  ];
+export function PracticeSessionCard({
+  session,
+  currentUserId,
+  onJoin,
+  onLeave,
+  onView,
+  className
+}: PracticeSessionCardProps) {
+  const isParticipant = currentUserId &&
+    (session.userId1 === currentUserId || session.userId2 === currentUserId);
+  const isCreator = currentUserId && session.userId1 === currentUserId;
+  const canJoin = !isParticipant && session.sessionType !== 'solo' && !session.isLive;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 group">
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            {isLive && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-xs font-medium text-red-400">LIVE</span>
-              </div>
-            )}
-            <span className="text-xs text-text-secondary capitalize">
-              {session.sessionType} Practice
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-text-secondary">
-            <Clock className="w-3 h-3" />
-            <span className="text-xs">
-              {formatTimeAgo(session.startTime)}
-            </span>
-          </div>
-        </div>
-        
-        {/* Participants */}
-        <div className="flex items-center gap-3 mb-4">
-          <AvatarGroup users={participants} max={3} size="sm" />
-          <div className="flex-1">
-            <div className="text-sm font-medium text-text-primary">
-              {isSolo ? 'Solo Practice' : `${participants.length} Dancers`}
-            </div>
-            <div className="text-xs text-text-secondary">
-              {isLive ? 'Currently practicing' : 'Practice session'}
-            </div>
+    <Card
+      className={cn(
+        'p-4 hover:shadow-lg transition-shadow duration-200',
+        className
+      )}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <Avatar
+            src={session.user1?.profilePicUrl}
+            alt={session.user1?.username || 'User'}
+            fallback={session.user1?.username?.[0] || 'U'}
+            size="md"
+          />
+          <div>
+            <h3 className="font-semibold text-text-primary">
+              {session.user1?.username || 'Anonymous'}
+            </h3>
+            <p className="text-sm text-text-secondary">
+              {session.sessionType === 'solo' ? 'Solo Practice' :
+               session.sessionType === 'partner' ? 'Partner Practice' : 'Group Practice'}
+            </p>
           </div>
         </div>
-        
-        {/* Session Info */}
-        <div className="bg-surface/30 rounded-lg p-3 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Play className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-text-primary">
-              Hip-Hop Basics Session
-            </span>
-          </div>
-          <div className="text-xs text-text-secondary">
-            Working on rhythm and flow fundamentals
-          </div>
-        </div>
-        
-        {/* Stats */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4 text-text-secondary" />
-              <span className="text-sm text-text-secondary">
-                {participants.length}/{session.sessionType === 'group' ? '8' : '2'}
-              </span>
-            </div>
-            {session.recordingUrl && (
-              <div className="flex items-center gap-1">
-                <Video className="w-4 h-4 text-text-secondary" />
-                <span className="text-sm text-text-secondary">Recorded</span>
-              </div>
-            )}
-          </div>
-          
-          {isLive && (
-            <div className="text-xs text-green-400 font-medium">
-              • Available to join
-            </div>
+
+        <div className="flex items-center gap-2">
+          {session.isLive && (
+            <Badge variant="success" size="sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse" />
+              Live
+            </Badge>
           )}
+
+          <Badge variant="primary" size="sm">
+            {session.sessionType}
+          </Badge>
         </div>
-        
-        {/* Actions */}
-        <div className="flex gap-2">
-          {isLive ? (
+      </div>
+
+      {/* Tutorial info */}
+      {session.tutorial && (
+        <div className="mb-3 p-3 bg-surface rounded-md">
+          <h4 className="font-medium text-text-primary mb-1">
+            {session.tutorial.title}
+          </h4>
+          <p className="text-sm text-text-secondary">
+            {session.tutorial.danceStyle} • {session.tutorial.difficulty}
+          </p>
+        </div>
+      )}
+
+      {/* Participants */}
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="w-4 h-4 text-text-secondary" />
+        <span className="text-sm text-text-secondary">
+          {session.sessionType === 'solo' ? 'Solo session' :
+           session.userId2 ? '2 participants' : '1 participant (waiting for partner)'}
+        </span>
+
+        {session.userId2 && (
+          <Avatar
+            src={session.user2?.profilePicUrl}
+            alt={session.user2?.username || 'Partner'}
+            fallback={session.user2?.username?.[0] || 'P'}
+            size="sm"
+          />
+        )}
+      </div>
+
+      {/* Time info */}
+      <div className="flex items-center gap-4 mb-4 text-sm text-text-secondary">
+        <div className="flex items-center gap-1">
+          <Clock className="w-4 h-4" />
+          <span>{formatRelativeTime(session.startTime)}</span>
+        </div>
+
+        {session.endTime && (
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            <span>Ended {formatRelativeTime(session.endTime)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        {isParticipant ? (
+          <>
             <Button
+              onClick={() => onView?.(session)}
               variant="primary"
               size="sm"
-              onClick={() => onJoin(session)}
               className="flex-1"
             >
-              <Users className="w-4 h-4 mr-2" />
-              Join Practice
+              {session.isLive ? (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Join Live
+                </>
+              ) : (
+                'View Session'
+              )}
             </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onWatch(session)}
-              className="flex-1"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Watch Recording
-            </Button>
-          )}
-        </div>
+
+            {isCreator && (
+              <Button
+                onClick={() => onLeave?.(session)}
+                variant="destructive"
+                size="sm"
+              >
+                End Session
+              </Button>
+            )}
+          </>
+        ) : canJoin ? (
+          <Button
+            onClick={() => onJoin?.(session)}
+            variant="primary"
+            size="sm"
+            className="flex-1"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Join Session
+          </Button>
+        ) : (
+          <Button
+            onClick={() => onView?.(session)}
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+          >
+            View Details
+          </Button>
+        )}
       </div>
     </Card>
   );
 }
+

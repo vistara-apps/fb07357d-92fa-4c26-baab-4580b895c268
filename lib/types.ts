@@ -2,8 +2,10 @@
 export interface User {
   userId: string; // Farcaster FID
   username: string;
-  profilePicUrl: string;
+  profilePicUrl?: string;
   walletAddress?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Dance Tutorial Types
@@ -13,11 +15,13 @@ export interface DanceTutorial {
   description: string;
   videoUrl: string;
   danceStyle: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  difficulty: string; // 'beginner' | 'intermediate' | 'advanced'
   duration: number; // in seconds
   thumbnailUrl: string;
   instructor: string;
-  tags: string[];
+  tags: string[]; // JSON array of tags
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Practice Session Types
@@ -26,11 +30,17 @@ export interface PracticeSession {
   userId1: string;
   userId2?: string; // optional for solo practice
   tutorialId?: string;
-  startTime: Date;
-  endTime?: Date;
+  startTime: string;
+  endTime?: string;
   isLive: boolean;
-  sessionType: 'solo' | 'partner' | 'group';
+  sessionType: string; // 'solo' | 'partner' | 'group'
   recordingUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  user1?: User;
+  user2?: User;
+  tutorial?: Partial<DanceTutorial>;
+  aiFeedbacks?: AIFeedback[];
 }
 
 // Challenge Types
@@ -38,13 +48,17 @@ export interface Challenge {
   challengeId: string;
   title: string;
   description: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   creatorId: string;
   prize?: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  tags: string[];
+  difficulty: string; // 'easy' | 'medium' | 'hard'
+  tags: string[]; // JSON array of tags
   participantCount: number;
+  createdAt?: string;
+  updatedAt?: string;
+  creator?: User;
+  submissions?: Submission[];
 }
 
 // Submission Types
@@ -53,11 +67,15 @@ export interface Submission {
   challengeId: string;
   userId: string;
   videoUrl: string;
-  timestamp: Date;
+  timestamp: string;
   likes: number;
   views: number;
   title?: string;
   description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  user?: User;
+  challenge?: Partial<Challenge>;
 }
 
 // AI Feedback Types
@@ -69,9 +87,11 @@ export interface AIFeedback {
   rhythmScore: number;
   formScore: number;
   energyScore: number;
-  suggestions: string[];
-  timestamp: Date;
+  suggestions: string[]; // JSON array of suggestions
+  timestamp: string;
   isPremium: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // App State Types
